@@ -133,3 +133,7 @@ dmypy.json
 
 #For data
 *.csv
+
+# For logs
+log_tensorboard/
+model/

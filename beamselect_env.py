@@ -40,9 +40,9 @@ class BeamSelectionEnv(Env):
         buffered and bit rate.
         '''
         self.observation_space = Box(
-            low=np.array([-5e2,-5e2,-5e2,0,0,0,0]), 
-            high=np.array([5e2,5e2,5e2,1e3,1e3,2e4,1e9]),
-            shape=(7,)
+            low=np.array([-5e2,-5e2,-5e2,-1,-1,-1.5,-1.5,0,0,0,0]), 
+            high=np.array([5e2,5e2,5e2,1,1,1.5,1.5,1e3,1e3,2e4,1e9]),
+            shape=(11,)
     )
         '''
         The action space is composed by an array with two integers. The first one 
@@ -55,7 +55,7 @@ class BeamSelectionEnv(Env):
 
 
     def reset(self):
-        self._state = np.zeros(7)
+        self._state = np.zeros(11)
         return self._state
     
     '''
