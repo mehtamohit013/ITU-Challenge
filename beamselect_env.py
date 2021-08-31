@@ -17,9 +17,13 @@ from communications.base_station import BaseStation
 from communications.ue import UE
 
 class BeamSelectionEnv(Env):
-    def __init__(self, ep=[0]):
+    def __init__(self, ep=[0],reward_type:str='test'):
         # Which episode to take data from (Only used when use_airsim=False).
         self.eps = ep
+
+        # Possible Options : 'test','train'
+        self.reward = reward_type
+
         '''
         Defining simulation environment with one BS and three UEs
         '''
@@ -66,7 +70,12 @@ class BeamSelectionEnv(Env):
     '''
     def step(self, action):
         target, index = action
-        bs_example_state, bs_example_reward, info, done = self.caviar_bs.step(target,index)
+        
+        if self.reward == 'train': 
+            bs_example_state, bs_example_reward, info, done = self.caviar_bs.step_new_reward(target,index)
+        else:
+            bs_example_state, bs_example_reward, info, done = self.caviar_bs.step(target,index)
+            
         self.state = bs_example_state
         reward = bs_example_reward
         return self.state, reward, done, info

@@ -173,6 +173,62 @@ class BaseStation():
 		'angular_vel_x','angular_vel_y','angular_vel_z', 'pkts_buffered', 'bit_rate', 'chosen_ue', 'packets', 'channel_mag']
 		info = dict(zip(dict_keys, info))
 		return state, reward, info, done
+
+	def step_new_reward(self, target, action):
+		"""
+        Executes the BS channel processing integrate with UE packets processing.
+        """
+		packets = self.packages(self._traffic_type, self.UEs[target].packet_size, self.UEs[target].obj_type)
+		channel_mag = self.H_mag(target, action)
+		self.Bit_rate(channel_mag,440.35)
+		buffered_packets = np.sum(self.UEs[target].buffer)
+		self.UEs[target].step(packets, self.R)
+		
+		all_packets = packets
+		# Step for not target UE's 
+		for i in range(len(self.UEs)):
+			if i != target:
+				d_packets = self.packages(self._traffic_type, self.UEs[i].packet_size, self.UEs[i].obj_type)
+				buffered_packets += np.sum(self.UEs[i].buffer)
+				self.UEs[i].step(d_packets, 0)
+				all_packets += d_packets
+
+		self._state += 1
+		if self.change_type:
+			update_traffic = self._state % 1000
+			if not update_traffic:
+				if self._traffic_type == 'dense':
+					self._traffic_type = 'light'
+				else:
+					self._traffic_type = 'dense'
+			
+		done = self._state >= self.ep_lenght
+		info = self.UE_feedback(target)# dropped packets and sent packets
+		ue_info = self.UEs[target].all_info #don't call it before call the UE step
+		info.extend(ue_info)
+		info.append(buffered_packets) # dropped packets, sent packets and buffered packages
+		info.append(float(self.R))# dropped packets, sent packets, buffered packages and bitrate
+		dropped_packets = info[0]
+		sent_packets = info[1]
+		info.append(str(self.UEs[target].ID))# dropped packets, sent packets, buffered packages, bitrate and ue_name
+		all_packets += buffered_packets
+		info.append(all_packets)
+		info.append(channel_mag)
+		
+		# New Reward
+		reward = (sent_packets - 2*dropped_packets - buffered_packets)/all_packets
+
+
+		state = np.concatenate((self.UEs[target]._position,
+								 [info[7],info[8],info[9],info[10],info[0], info[1], info[23], info[24]]),
+								  axis=None)
+
+		dict_keys = ['pkts_dropped', 'pkts_transmitted', 'timestamp','obj','pos_x','pos_y','pos_z',
+		'orien_x','orien_y','orien_z','orien_w','linear_acc_x','linear_acc_y','linear_acc_z',
+		'linear_vel_x','linear_vel_y','linear_vel_z','angular_acc_x','angular_acc_y','angular_acc_z',
+		'angular_vel_x','angular_vel_y','angular_vel_z', 'pkts_buffered', 'bit_rate', 'chosen_ue', 'packets', 'channel_mag']
+		info = dict(zip(dict_keys, info))
+		return state, reward, info, done
 	
 	def best_beam_step(self, target):
 		"""
