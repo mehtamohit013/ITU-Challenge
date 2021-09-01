@@ -6,3 +6,8 @@
 *   wd to 0.1 -> smoothed = -0.152  and average of -0.1533
 *   Target update : 1000 -> smoothed = -0.1551 and average of -0.1523
 *   Increasing the EPS_END to 0.3 -> smoothed = -0.1537 and average of -0.1536    
+*   Adding channel_mag to reward and running it with best hyperparams leds to -0.1420
+*   Increasing weight decay from 200 to 1000 leads to smoothed value of -0.158 and avg of  -0.1576
+*   Increasing weight decay from 200 to 10000 leads to smoothed value of -0.1551 and avg of  -0.1552
+*   Increasing weight decay from 200 to 10K leads to smoothed value of -0.1509 and avg of  -0.1489
+*   Increasing weight decay from 200 to 80K leads to smoothed value of -0.1594 and avg of  -0.1581
