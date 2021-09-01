@@ -11,3 +11,7 @@
 *   Increasing weight decay from 200 to 10000 leads to smoothed value of -0.1551 and avg of  -0.1552
 *   Increasing weight decay from 200 to 10K leads to smoothed value of -0.1509 and avg of  -0.1489
 *   Increasing weight decay from 200 to 80K leads to smoothed value of -0.1594 and avg of  -0.1581
+
+# Meeting
+*   Reward function discussion and buffer packets; observation space??
+*   Observation space
