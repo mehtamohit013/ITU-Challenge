@@ -12,6 +12,13 @@
 *   Increasing weight decay from 200 to 10K leads to smoothed value of -0.1509 and avg of  -0.1489
 *   Increasing weight decay from 200 to 80K leads to smoothed value of -0.1594 and avg of  -0.1581
 
+# Inference with val
+*   Standard : Validation Overall reward = -10556.43.  Validation Average Reward = -0.1537
+*   With eps_decay = *0.1 : Validation Overall reward = -9452.27.  Validation Average Reward = -0.1376 
+*   With gamma = 0 : Validation Overall reward = -10605.35.  Validation Average Reward = -0.1544
+*   With target update = 10 : Validation Overall reward = -9785.65.  Validation Average Reward = -0.1424
+*   With eps_end=0.5 :s
+
 # Meeting
 *   Reward function discussion and buffer packets; observation space??
 *   Observation space
