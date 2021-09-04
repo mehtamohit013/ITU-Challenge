@@ -22,3 +22,4 @@
 # Meeting
 *   Reward function discussion and buffer packets; observation space??
 *   Observation space
+*   Preprocessing data
