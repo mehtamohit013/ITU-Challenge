@@ -164,7 +164,7 @@ class BaseStation():
 		
 		reward = (sent_packets - 2*dropped_packets)/all_packets
 		state = np.concatenate((self.UEs[target]._position,
-								 [info[7],info[8],info[9],info[10],info[0], info[1], info[23], info[24]]),
+								 [info[7],info[8],info[9],info[10],info[0], info[1], info[23], info[24]/1e8, info[26], info[27]]),
 								  axis=None)
 
 		dict_keys = ['pkts_dropped', 'pkts_transmitted', 'timestamp','obj','pos_x','pos_y','pos_z',
@@ -216,11 +216,11 @@ class BaseStation():
 		info.append(channel_mag)
 		
 		# New Reward
-		reward = (sent_packets - 2*dropped_packets - buffered_packets)/all_packets
+		reward = -dropped_packets
 
 
 		state = np.concatenate((self.UEs[target]._position,
-								 [info[7],info[8],info[9],info[10],info[0], info[1], info[23], info[24]]),
+								 [info[7],info[8],info[9],info[10],info[0], info[1], info[23], info[24]/1e8, info[26], info[27]]),
 								  axis=None)
 
 		dict_keys = ['pkts_dropped', 'pkts_transmitted', 'timestamp','obj','pos_x','pos_y','pos_z',
