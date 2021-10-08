@@ -5,6 +5,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from .caviar_channel import ULAchannel, UPAchannel, chosen_precoder, ULA_best_beam
+import math
 
 class BaseStation():
 	
@@ -216,7 +217,7 @@ class BaseStation():
 		info.append(channel_mag)
 		
 		# New Reward
-		reward = -dropped_packets
+		reward = np.log(sent_packets+1) - np.log(dropped_packets+1)
 
 
 		state = np.concatenate((self.UEs[target]._position,
