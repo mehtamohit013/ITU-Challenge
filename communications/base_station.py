@@ -187,11 +187,15 @@ class BaseStation():
 		
 		all_packets = packets
 		# Step for not target UE's 
+		tot_dpkt = 0
+		tot_sent = 0
 		for i in range(len(self.UEs)):
 			if i != target:
 				d_packets = self.packages(self._traffic_type, self.UEs[i].packet_size, self.UEs[i].obj_type)
 				buffered_packets += np.sum(self.UEs[i].buffer)
-				self.UEs[i].step(d_packets, 0)
+				dpkt, spkt = self.UEs[i].step(d_packets, 0)
+				tot_dpkt += dpkt
+				tot_sent += spkt
 				all_packets += d_packets
 
 		self._state += 1
@@ -203,7 +207,7 @@ class BaseStation():
 				else:
 					self._traffic_type = 'dense'
 			
-		done = self._state >= self.ep_lenght
+		done = 0
 		info = self.UE_feedback(target)# dropped packets and sent packets
 		ue_info = self.UEs[target].all_info #don't call it before call the UE step
 		info.extend(ue_info)
@@ -211,6 +215,8 @@ class BaseStation():
 		info.append(float(self.R))# dropped packets, sent packets, buffered packages and bitrate
 		dropped_packets = info[0]
 		sent_packets = info[1]
+		tot_dpkt += dropped_packets
+		sent_packets += sent_packets
 		info.append(str(self.UEs[target].ID))# dropped packets, sent packets, buffered packages, bitrate and ue_name
 		all_packets += buffered_packets
 		info.append(all_packets)
@@ -218,7 +224,7 @@ class BaseStation():
 		
 		# New Reward
 		# reward = np.log(sent_packets+1) - np.log(dropped_packets+1)
-		reward = sent_packets
+		reward = -np.log(tot_sent+1) - np.log(tot_dpkt+1)
 
 
 		state = np.concatenate((self.UEs[target]._position,
