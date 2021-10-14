@@ -230,3 +230,134 @@ class ICMModel(nn.Module):
 
         real_next_state_feature = encode_next_state
         return real_next_state_feature, pred_next_state_feature, pred_action
+
+class LinearActorCritic(nn.Module):
+    def __init__(self, inputs:list, outputs:int=64*3):
+        super().__init__()
+        self.device = torch.device('cpu')
+
+        self.flatten = nn.Flatten(start_dim=1,end_dim=-1)
+        self.inp_size = np.prod(inputs)
+
+        self.affine =  nn.Sequential(
+            self.create_linear(self.inp_size,16),
+            self.create_linear(16, 32),
+            self.create_linear(32,64),
+            self.create_linear(64,256)
+        )
+        
+        self.actor_linear = nn.Sequential(
+            self.create_linear(256,outputs)
+        )
+
+        self.critic_linear = nn.Sequential(
+            self.create_linear(256,1)
+        )
+
+
+    
+    def create_linear(self,inp:int,out:int, act='relu')-> nn.Module:
+        if act == 'relu':
+            return nn.Sequential(
+                nn.Linear(inp,out),
+                nn.ReLU()
+                # nn.BatchNorm1d(out)
+            )
+        elif act == 'lrelu':
+            return nn.Sequential(
+                nn.Linear(inp,out),
+                nn.LeakyReLU()
+                # nn.BatchNorm1d(out)
+            )
+    
+    def forward(self, x):
+        x = x.to(self.device)
+
+        x = self.flatten(x)
+        x = self.affine(x)
+
+        # Actor - A2C implementation
+        x_action = self.actor_linear(x)
+        x_action = nn.Softmax(dim=-1)(x_action)
+
+        #  Critic
+        x_critic = self.critic_linear(x) 
+
+        return x_action,x_critic
+
+class LinearICM(nn.Module):
+    def __init__(self,input_size:list,output_size:int,
+    use_cuda:bool=False):
+
+        super().__init__()
+        self.input_size = input_size
+        self.inp = np.prod(self.input_size)
+        self.output_size = output_size
+        self.device = torch.device('cuda' if use_cuda else 'cpu')
+
+        self.flatten = nn.Flatten(1,-1)
+
+        self.feature = nn.Sequential(
+            self.create_linear(self.inp,32, 'lrelu'),
+            self.create_linear(32,64, 'lrelu'),
+            self.create_linear(64,128, 'lrelu'),
+            self.create_linear(128,256, 'lrelu')
+        )
+
+        self.inverse_net = nn.Sequential(
+            self.create_linear(256*2,256),
+            nn.Linear(256,output_size)
+        )
+
+        self.forward_1 = self.create_linear(output_size+256,256)
+        self.forward_2 = nn.Linear(output_size+256,256)
+
+        self.residual = [nn.Sequential(
+            self.create_linear(output_size+256,256, 'lrelu'),
+            nn.Linear(256, 256),
+        ).to(self.device)] * 8
+
+    def forward(self,inputs):
+        state, next_state, action = inputs
+
+        state = self.flatten(state)
+        next_state = self.flatten(next_state)
+
+        encode_state = self.feature(state)
+        encode_next_state = self.feature(next_state)
+        # get pred action
+        pred_action = torch.cat((encode_state, encode_next_state), 1)
+        pred_action = self.inverse_net(pred_action)
+        # ---------------------
+
+        # get pred next state
+        pred_next_state_feature_orig = torch.cat((encode_state, action), 1)
+        pred_next_state_feature_orig = self.forward_1(pred_next_state_feature_orig)
+
+        # residual
+        for i in range(4):
+            pred_next_state_feature = self.residual[i * 2](torch.cat((pred_next_state_feature_orig, action), 1))
+            pred_next_state_feature_orig = self.residual[i * 2 + 1](
+                torch.cat((pred_next_state_feature, action), 1)) + pred_next_state_feature_orig
+
+        pred_next_state_feature = self.forward_2(torch.cat((pred_next_state_feature_orig, action), 1))
+
+        real_next_state_feature = encode_next_state
+        return real_next_state_feature, pred_next_state_feature, pred_action
+
+
+
+    def create_linear(self,inp:int,out:int, act='relu')-> nn.Module:
+        if act == 'relu':
+            return nn.Sequential(
+                nn.Linear(inp,out),
+                nn.ReLU()
+                # nn.BatchNorm1d(out)
+            )
+        elif act == 'lrelu':
+            return nn.Sequential(
+                nn.Linear(inp,out),
+                nn.LeakyReLU()
+                # nn.BatchNorm1d(out)
+            )
+            # nn.BatchNorm1d(out)

@@ -7,7 +7,7 @@ import torch.optim as optim
 
 from torch.distributions.categorical import Categorical
 
-from model_cur import CnnActorCriticNetwork, ICMModel
+from model_cur import CnnActorCriticNetwork, ICMModel, LinearActorCritic, LinearICM
 
 
 class ICMAgent(object):
@@ -29,7 +29,8 @@ class ICMAgent(object):
             use_gae=True,
             use_cuda=False,
             use_noisy_net=False):
-        self.model = CnnActorCriticNetwork(input_size, output_size, use_noisy_net)
+        # self.model = CnnActorCriticNetwork(input_size, output_size, use_noisy_net)
+        self.model = LinearActorCritic(input_size,output_size)
         self.num_env = num_env
         self.output_size = output_size
         self.input_size = input_size
@@ -45,7 +46,7 @@ class ICMAgent(object):
         self.clip_grad_norm = clip_grad_norm
         self.device = torch.device('cuda' if use_cuda else 'cpu')
 
-        self.icm = ICMModel(input_size, output_size, use_cuda)
+        self.icm = LinearICM(input_size, output_size, use_cuda)
         self.optimizer = optim.Adam(list(self.model.parameters()) + list(self.icm.parameters()),
                                     lr=learning_rate)
         self.icm = self.icm.to(self.device)
