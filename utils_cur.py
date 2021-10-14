@@ -26,13 +26,13 @@ def make_train_data(reward, done, value, gamma, num_step, num_worker):
         adv = discounted_return - value[:, :-1]
 
     else:
-        running_add = value[:, -1]
-        for t in range(num_step - 1, -1, -1):
+        running_add = value[-1]
+        for t in range(num_step - 1,-1,-1):
             running_add = reward[:, t] + gamma * running_add * (1 - done[:, t])
-            discounted_return[:, t] = running_add
+            discounted_return[:,t] = running_add
 
         # For Actor
-        adv = discounted_return - value[:, :-1]
+        adv = discounted_return - value[None,:-1]
 
     return discounted_return.reshape([-1]), adv.reshape([-1])
 
