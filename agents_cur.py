@@ -104,7 +104,7 @@ class ICMAgent(object):
             log_prob_old = m_old.log_prob(y_batch)
             # ------------------------------------------------------------
 
-        for i in tqdm.tqdm(range(self.epoch)):
+        for i in range(self.epoch):
             np.random.shuffle(sample_range)
             for j in range(int(len(s_batch) / self.batch_size)):
                 sample_idx = sample_range[self.batch_size * j:self.batch_size * (j + 1)]
