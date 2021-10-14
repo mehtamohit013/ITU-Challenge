@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
 import tqdm
-
+import pickle
 import math
 import random
 import numpy as np
@@ -53,11 +53,11 @@ reward_type = 'test'    # 'test' or 'train'
 epi = [0,0] #[start,end] 
 epi_val = [500,500]
 
-# gym_env_train = BeamSelectionEnv(epi,reward_type)
+gym_env_train = BeamSelectionEnv(epi,reward_type)
 
-gym_env_ind = list()
-for i in range(epi[0],epi[1]+1):
-    gym_env_ind.append(BeamSelectionEnv([i,i],reward_type))
+# gym_env_ind = list()
+# for i in range(epi[0],epi[1]+1):
+#     gym_env_ind.append(BeamSelectionEnv([i,i],reward_type))
 
 gym_env_val = BeamSelectionEnv(epi_val)
 
@@ -80,15 +80,21 @@ n_steps_val = sum(n_steps_epi_val)
 # In[6]:
 
 
+n_steps_val
+
+
+# In[7]:
+
+
 train_method = 'ICM'
 env_id = None #BreakoutNoFrameskip-v4
 env_type = 'beamselect'
-env = gym_env_ind[0]
+env = gym_env_train
 
 
 # # Hyper Params
 
-# In[7]:
+# In[8]:
 
 
 lam = 0.95
@@ -113,21 +119,28 @@ HISTORY_SIZE = 16
 STATES_USED = 13
 
 
-# In[8]:
+# In[9]:
+
+
+model_path = './model_curiosity'
+icm_path = './icm_curiosity'
+
+
+# In[10]:
 
 
 input_size = [HISTORY_SIZE,STATES_USED]  
 output_size = 192 #64*3
 
 
-# In[9]:
+# In[11]:
 
 
 from utils_cur import *
 from agents_cur import *
 
 
-# In[10]:
+# In[12]:
 
 
 reward_rms = RunningMeanStd()
@@ -139,7 +152,7 @@ discounted_reward = RewardForwardFilter(gamma)
 agent = ICMAgent
 
 
-# In[11]:
+# In[13]:
 
 
 agent = agent(
@@ -162,7 +175,7 @@ agent = agent(
     )
 
 
-# In[12]:
+# In[14]:
 
 
 states = np.zeros([1, HISTORY_SIZE, 1,STATES_USED])
@@ -173,10 +186,9 @@ sample_step = 0
 sample_env_idx = 0
 sample_i_rall = 0
 global_update = 0
-global_step = 0
 
 
-# In[13]:
+# In[15]:
 
 
 Transition = namedtuple('Transition',
@@ -199,7 +211,7 @@ class ReplayMemory(object):
         return len(self.memory)
 
 
-# In[14]:
+# In[16]:
 
 
 history = ReplayMemory(HISTORY_SIZE)
@@ -208,17 +220,17 @@ for i in range(HISTORY_SIZE):
     history.push(np.zeros((STATES_USED, )))
 
 
-# In[15]:
+# In[17]:
 
 
 a = history.sample()
 np.array(a).shape
 
 
-# In[16]:
+# In[18]:
 
 
-def run(action):
+def run(action, env):
     s, reward, done, info = env.step([action//64, action%64])
     # print(type(s), s.shape)
     history.push(s.astype(np.float))
@@ -226,7 +238,7 @@ def run(action):
     return [np.array(history.sample(BATCH_SIZE)), reward, done, done, reward]
 
 
-# In[17]:
+# In[19]:
 
 
 # normalize obs
@@ -238,7 +250,7 @@ while steps < pre_obs_norm_step:
     actions = np.random.randint(0, output_size, size=(num_worker,))
 
     for action in actions:
-        s, r, d, rd, lr = run(action)
+        s, r, d, rd, lr = run(action, gym_env_train)
         next_obs.append(s[:])
         
 next_obs = np.stack(next_obs)
@@ -246,12 +258,69 @@ obs_rms.update(next_obs)
 print('End to initalize...')
 
 
-# In[18]:
+# In[20]:
 
 
-while True:
+f = open('obs_rms.pkl', 'wb')
+pickle.dump(obs_rms, f)
+f.close()
+
+
+# In[21]:
+
+
+def val(env):
+    with torch.no_grad():
+        history = ReplayMemory(HISTORY_SIZE)
+        for i in range(HISTORY_SIZE):
+            history.push(np.zeros((STATES_USED, )))
+        f = open('obs_rms.pkl', 'rb')
+        obs_rms = pickle.load(f)
+        rall = 0
+        rd = False
+        intrinsic_reward_list = []
+        states = np.zeros([1, HISTORY_SIZE, 1,STATES_USED])
+        def run(action):
+            s, reward, done, info = env.step([action//64, action%64])
+            # print(type(s), s.shape)
+            history.push(s.astype(np.float))
+
+            return [np.array(history.sample(BATCH_SIZE)), reward, done, done, reward]
+
+        for steps in range(n_steps_val):
+            actions, value, policy = agent.get_action((states - obs_rms.mean) / np.sqrt(obs_rms.var))
+
+            next_states, rewards, dones, real_dones, log_rewards, next_obs = [], [], [], [], [], []
+
+            for action in actions:
+                s, r, d, rd, lr = run(action)
+                rall += r
+                next_states.append(s)
+        #         next_obs = s[3, :, :].reshape([1, 1, 1,STATES_USED])
+
+            # total reward = int reward + ext Reward
+        #     intrinsic_reward = agent.compute_intrinsic_reward(next_obs)
+        #     intrinsic_reward_list.append(intrinsic_reward)
+            next_states = np.stack(next_states)
+            states = next_states[:, :, :, :]
+
+        #     if rd:
+        #         intrinsic_reward_list = (intrinsic_reward_list - np.mean(intrinsic_reward_list)) / np.std(
+        #             intrinsic_reward_list)
+        #         with open('int_reward', 'wb') as f:
+        #             pickle.dump(intrinsic_reward_list, f)
+        #         steps = 0
+        #         rall = 0
+        print(f"Total Val Reward: {rall}, Avg Val Reward: {rall/n_steps_val}")
+
+
+# In[22]:
+
+
+running_total_reward = 0
+cnt = 0
+for global_step in range(0, n_steps+100000000, 128):
     total_state, total_reward, total_done, total_next_state, total_action, total_int_reward, total_next_obs, total_values, total_policy =         [], [], [], [], [], [], [], [], []
-    global_step += (num_worker * num_step)
     global_update += 1
 
     # Step 1. n-step rollout
@@ -259,8 +328,12 @@ while True:
         actions, value, policy = agent.get_action((states - obs_rms.mean) / np.sqrt(obs_rms.var)) #Normalization
 
         next_states, rewards, dones, real_dones, log_rewards, next_obs = [], [], [], [], [], []
+        
+        if (len(actions) == 0):
+            print("yesss")
         for action in actions:
-            s, r, d, rd, lr = run(action)
+            s, r, d, rd, lr = run(action, gym_env_train)
+            cnt += 1
             next_states.append(s)
             rewards.append(r)
             dones.append(d)
@@ -349,14 +422,15 @@ while True:
                         adv,
                         total_policy)
 
-    if global_step % (num_worker * num_step * 100) == 0:
-        print('Now Global Step :{}'.format(global_step))
-        # torch.save(agent.model.state_dict(), model_path)
-        # torch.save(agent.icm.state_dict(), icm_path)
+    running_total_reward += np.sum(total_reward)
 
+    
+    if (global_step) % (num_worker * num_step) == 0:
+        print('Now Global Step :{}'.format((global_step)))
+        print(f'Total reward : {np.mean(total_reward)}, Running: {running_total_reward/(global_step+num_step)} {cnt}')
+#         torch.save(agent.model.state_dict(), model_path)
+#         torch.save(agent.icm.state_dict(), icm_path)
 
-# In[ ]:
-
-
-
+#     if (global_step % 1280) == 0:
+#         val(copy.deepcopy(gym_env_val))
 
