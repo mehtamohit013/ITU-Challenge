@@ -223,8 +223,8 @@ class BaseStation():
 		info.append(channel_mag)
 		
 		# New Reward
-		# reward = np.log(sent_packets+1) - np.log(dropped_packets+1)
-		reward = -np.log(tot_sent+1) - np.log(tot_dpkt+1)
+		reward = np.log(sent_packets+1) - np.log(dropped_packets+1)
+		# reward = -np.log(tot_sent+1) - np.log(tot_dpkt+1)
 
 
 		state = np.concatenate((self.UEs[target]._position,

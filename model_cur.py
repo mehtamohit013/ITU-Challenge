@@ -243,15 +243,16 @@ class LinearActorCritic(nn.Module):
             self.create_linear(self.inp_size,16),
             self.create_linear(16, 32),
             self.create_linear(32,64),
-            self.create_linear(64,256)
+            self.create_linear(64,256),
+            self.create_linear(256,512)
         )
         
         self.actor_linear = nn.Sequential(
-            self.create_linear(256,outputs)
+            self.create_linear(512,outputs)
         )
 
         self.critic_linear = nn.Sequential(
-            self.create_linear(256,1)
+            self.create_linear(512,1)
         )
 
 
